@@ -1,0 +1,464 @@
+> rm(list=ls())
+> constrained.kmeans <- function(p,a,std,k,b,imax,seed,details){
++ # Bob Agnew (raagnew1@gmail.com, www.raagnew.com)
++ # Constrained k-means clustering using lp.transport function
++ # in R package lpSolve
++ # Implements Bradley-Bennett-Demiriz algorithm
++ # p = population vector associated with observations
++ # Population for each observation must be assigned to same cluster
++ # For a normal clustering problem, p is a vector of ones
++ # a = numeric attribute matrix with a row for each observation
++ # std = TRUE if attributes are to be standardized across observations,
++ # else FALSE
++ # k = specified number of k-means clusters
++ # b = vector of integer lower bounds for population clusters
++ # If all populations are one, then these are exact lower bounds
++ # for cluster sizes
++ # If populations vary, then these are target lower bounds for
++ # cluster populations
++ # imax = maximum number of iterations in kmeans loop
++ # seed = random number seed for initial cluster assignments
++ # details = TRUE for printing of iteration details, else FALSE
++ m <- dim(a)[1] # Number of observations
++ n <- dim(a)[2] # Number of attributes
++ if (std) {a <- apply(a,2,function(u) (u-mean(u))/sd(u))}
++ set.seed(seed,kind=NULL,normal.kind=NULL) # Set random number seed
++ c <- sample.int(k,m,replace=TRUE,prob=NULL) # Initial cluster vector
++ require(lpSolve) # Load R linear programming package
++ num <- iter <- 1
++ while (iter <= imax & num > 0){
++ cost <- matrix(0,nrow=m,ncol=k)
++ for (j in 1:n){
++ cost <- cost + outer(a[,j],tapply(p*a[,j],c,sum)/tapply(p,c,sum),"-")^2}
++ # Solution of transportation linear program
++ trans <- lp.transport(cost,"min",rep("=",m),p,rep(">=",k),b)
++ # Generate new clusters
++ # For split allocation, assign to maximal cluster
++ c1 <- apply(trans$solution,1,which.max)
++ num <- sum(c1!=c)
++ if (details){
++ print(noquote("Iteration Number"))
++ print(iter)
++ print(trans)
++ print(noquote("Number of split allocations"))
++ print(sum(apply(trans$solution,1,max) < p))
++ print(noquote("Number of revised cluster elements"))
++ print(num)}
++ c <- c1 #Clusters revised
++ iter <- iter + 1
++ }
++ means <- NULL
++ for (j in 1:n){
++ means <- cbind(means,tapply(p*a[,j],c,sum)/tapply(p,c,sum))}
++ cost <- matrix(0,nrow=m,ncol=k)
++ for (j in 1:n){
++ cost <- cost + outer(a[,j],tapply(p*a[,j],c,sum)/tapply(p,c,sum),"-")^2}
++ cost <- matrix(p,nrow=m,ncol=k)*cost
++ ss <- sum(cost*outer(c,1:k,"=="))
++ result <- list(iter-1,num==0,c,tapply(p,c,sum),means,ss)
++ names(result) <- c("iter","converge","cluster","population","centers",
++ "tot.withinss")
++ return(result)}
+> 
+> date() # Time
+[1] "Sat Sep 25 17:25:40 2021"
+> # Read in California census block group data
+> # Downloaded CA data from https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/
+> # Trimmed data in CA_Extract.R script
+> data <- read.table("c:/Congressional_Districting/CA_Blkgrps.txt",sep=",",header=TRUE)
+> # Remove dummy block groups with no population 
+> data <- data[data[,4]!="0",]
+> p <- sapply(data[,4],as.numeric) #Census block group populations
+> # Number of census block groups with positive population
+> length(p)
+[1] 25557
+> # Block group population range
+> range(p)
+[1]     2 37892
+> # Block group population mean
+> mean(p)
+[1] 1547.06
+> # Block group population median
+> median(p)
+[1] 1438
+> a <- matrix(sapply(data[,c(6,5)],as.numeric),ncol=2) # Block group longitudes and latitudes
+> # Block group longitude range
+> range(a[,1])
+[1] -124.2618 -114.3065
+> # Block group latitude range
+> range(a[,2])
+[1] 32.54483 41.94665
+> k <- 52 # Number of clusters = number of CA congressional districts
+> 
+> # Constrained k-means clustering applied to CA congressional districting
+> # Target population lower bounds set tightly at average rounded down
+> ckm <- constrained.kmeans(p,a,FALSE,k,rep(floor(sum(p)/k),k),100,23,TRUE)
+Loading required package: lpSolve
+[1] Iteration Number
+[1] 1
+Success: the objective function is 296498705 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 25036
+[1] Iteration Number
+[1] 2
+Success: the objective function is 4416792 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 5464
+[1] Iteration Number
+[1] 3
+Success: the objective function is 3646330 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 2458
+[1] Iteration Number
+[1] 4
+Success: the objective function is 3529738 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 1522
+[1] Iteration Number
+[1] 5
+Success: the objective function is 3499261 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 1104
+[1] Iteration Number
+[1] 6
+Success: the objective function is 3488171 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 864
+[1] Iteration Number
+[1] 7
+Success: the objective function is 3472759 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 769
+[1] Iteration Number
+[1] 8
+Success: the objective function is 3457982 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 630
+[1] Iteration Number
+[1] 9
+Success: the objective function is 3450843 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 471
+[1] Iteration Number
+[1] 10
+Success: the objective function is 3448373 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 395
+[1] Iteration Number
+[1] 11
+Success: the objective function is 3447377 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 319
+[1] Iteration Number
+[1] 12
+Success: the objective function is 3446754 
+[1] Number of split allocations
+[1] 51
+[1] Number of revised cluster elements
+[1] 237
+[1] Iteration Number
+[1] 13
+Success: the objective function is 3446012 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 228
+[1] Iteration Number
+[1] 14
+Success: the objective function is 3444817 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 207
+[1] Iteration Number
+[1] 15
+Success: the objective function is 3443817 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 185
+[1] Iteration Number
+[1] 16
+Success: the objective function is 3443266 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 173
+[1] Iteration Number
+[1] 17
+Success: the objective function is 3442815 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 169
+[1] Iteration Number
+[1] 18
+Success: the objective function is 3442463 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 136
+[1] Iteration Number
+[1] 19
+Success: the objective function is 3442132 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 113
+[1] Iteration Number
+[1] 20
+Success: the objective function is 3441833 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 101
+[1] Iteration Number
+[1] 21
+Success: the objective function is 3441538 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 113
+[1] Iteration Number
+[1] 22
+Success: the objective function is 3441275 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 110
+[1] Iteration Number
+[1] 23
+Success: the objective function is 3441031 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 101
+[1] Iteration Number
+[1] 24
+Success: the objective function is 3440912 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 71
+[1] Iteration Number
+[1] 25
+Success: the objective function is 3440826 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 81
+[1] Iteration Number
+[1] 26
+Success: the objective function is 3440756 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 71
+[1] Iteration Number
+[1] 27
+Success: the objective function is 3440713 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 64
+[1] Iteration Number
+[1] 28
+Success: the objective function is 3440689 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 39
+[1] Iteration Number
+[1] 29
+Success: the objective function is 3440681 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 34
+[1] Iteration Number
+[1] 30
+Success: the objective function is 3440672 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 40
+[1] Iteration Number
+[1] 31
+Success: the objective function is 3440663 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 28
+[1] Iteration Number
+[1] 32
+Success: the objective function is 3440649 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 33
+[1] Iteration Number
+[1] 33
+Success: the objective function is 3440625 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 29
+[1] Iteration Number
+[1] 34
+Success: the objective function is 3440607 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 20
+[1] Iteration Number
+[1] 35
+Success: the objective function is 3440597 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 10
+[1] Iteration Number
+[1] 36
+Success: the objective function is 3440591 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 8
+[1] Iteration Number
+[1] 37
+Success: the objective function is 3440586 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 11
+[1] Iteration Number
+[1] 38
+Success: the objective function is 3440575 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 10
+[1] Iteration Number
+[1] 39
+Success: the objective function is 3440562 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 15
+[1] Iteration Number
+[1] 40
+Success: the objective function is 3440543 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 12
+[1] Iteration Number
+[1] 41
+Success: the objective function is 3440527 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 17
+[1] Iteration Number
+[1] 42
+Success: the objective function is 3440512 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 8
+[1] Iteration Number
+[1] 43
+Success: the objective function is 3440509 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 12
+[1] Iteration Number
+[1] 44
+Success: the objective function is 3440506 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 6
+[1] Iteration Number
+[1] 45
+Success: the objective function is 3440506 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 2
+[1] Iteration Number
+[1] 46
+Success: the objective function is 3440506 
+[1] Number of split allocations
+[1] 50
+[1] Number of revised cluster elements
+[1] 0
+Warning message:
+package ‘lpSolve’ was built under R version 3.6.2 
+> ckm$iter
+[1] 46
+> ckm$converge
+[1] TRUE
+> ckm$tot.withinss
+[1] 3441839
+> ckm$population # Approximately equal
+     1      2      3      4      5      6      7      8      9     10     11 
+761335 760814 759209 760606 760228 760294 760425 759561 762336 760266 759947 
+    12     13     14     15     16     17     18     19     20     21     22 
+759515 759753 758820 759572 759186 760902 759989 760545 759661 759636 760307 
+    23     24     25     26     27     28     29     30     31     32     33 
+759841 759429 761227 759541 760040 759568 760169 762093 760895 761332 761339 
+    34     35     36     37     38     39     40     41     42     43     44 
+760431 760234 760835 761185 760363 758993 760311 760064 760418 760901 760251 
+    45     46     47     48     49     50     51     52 
+761309 760143 760775 760805 760912 760756 761419 759737 
+> MEAN_LONGITUDE <- ckm$centers[,1]
+> MEAN_LATITUDE <- ckm$centers[,2]
+> c <- ckm$cluster
+> CLUSTER <- sapply(c,as.character)
+> 
+> # Save blockgroup table with appended clusters
+> write.table(cbind(data,CLUSTER),file="c:/CONGRESSIONAL_DISTRICTING/CA_Blkgroup_Clusters.txt",sep=",",row.names=FALSE,col.names=TRUE)
+> 
+> # Geoplot of CA census block groups and cluster centroids
+> pdf("c:/CONGRESSIONAL_DISTRICTING/CA_Census_Block_Group_Centroids.pdf")
+> plot(a[,1],a[,2],col="black",pch=19,cex=.25,asp=1.5,xlab="LONGITUDE",ylab="LATITUDE",
++ main="CALIFORNIA CENSUS BLOCK GROUPS & CLUSTER CENTROIDS")
+> points(MEAN_LONGITUDE,MEAN_LATITUDE,col="red",pch=19,cex=.75)
+> dev.off()
+null device 
+          1 
+> 
+> # Geoplot of CA census block group clusters
+> pdf("c:/CONGRESSIONAL_DISTRICTING/CA_Census_Block_Group_Clusters.pdf")
+> plot(a[,1],a[,2],asp=1.5,cex=.25,col=rainbow(k)[c],pch=19,xlab="LONGITUDE",ylab="LATITUDE",
++ main="CALIFORNIA CENSUS BLOCK GROUP CLUSTERS")
+> dev.off()
+null device 
+          1 
+> date() # Time
+[1] "Sun Sep 26 06:29:32 2021"
+> 
