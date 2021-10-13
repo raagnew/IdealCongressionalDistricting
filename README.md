@@ -1,6 +1,6 @@
 # IdealCongressionalDistricting
 
-We utilize a constrained version of the popular k-means clustering algorithm to assign census block groups to congressional districts in each US state.  In ordinary clustering, the number of clusters, k, is subject to choice.  In congressional districting, k is stipulated by apportionment, recently completed for the 2020 US Census.  Results are demonstrated for the ten most populous states in the US.  Click on PDFs for visualization.
+We utilize a constrained version of the popular k-means clustering algorithm to assign census block groups to congressional districts in each US state.  In ordinary clustering, the number of clusters, k, is subject to choice.  In congressional districting, k is stipulated by apportionment, recently completed for the 2020 US Census.  Results are demonstrated for the most populous states in the US.  Click on PDFs for visualization.
 
 For each state, cluster populations are approximately equal and total population-weighted squared geodistance (per longitude and latitude) from block groups to population-weighted cluster centroids is minimized.  Census block groups are between larger census tracts and atomic census blocks, a reasonable level of granularity.  Ghost block groups with zero population are ignored.
 
