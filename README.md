@@ -17,3 +17,5 @@ https://github.com/raagnew/Constrained-K-Means-Clustering-in-R
 https://towardsdatascience.com/k-means-a-complete-introduction-1702af9cd8c
 
 https://github.com/raagnew/CongressionalApportionment
+
+https://public.tableau.com/app/profile/bob.agnew
